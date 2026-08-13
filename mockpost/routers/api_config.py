@@ -27,7 +27,13 @@ def _config() -> dict:
                  "note": "AUTH is advertised without TLS and any credential is accepted, so "
                          "clients that always log in (Flask-Mail, Nodemailer) need no changes."},
         "telegram": {"base_url": f"{base}/telegram", "env": "TELEGRAM_API_BASE_URL=<base_url>",
-                     "note": "Put the bot token in the URL: /telegram/bot<TOKEN>/..."},
+                     "methods": ["getMe", "sendMessage", "sendPhoto", "sendDocument",
+                                 "editMessageText", "deleteMessage", "sendChatAction",
+                                 "answerCallbackQuery", "getChat", "getUpdates",
+                                 "setWebhook", "deleteWebhook", "getWebhookInfo"],
+                     "note": "Put the bot token in the URL: /telegram/bot<TOKEN>/... . "
+                             "Every method answers on GET and POST and reads JSON, "
+                             "form-urlencoded, multipart or query parameters."},
         "whatsapp": {"base_url": f"{base}/whatsapp/v1", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>"},
         "webpush": {"endpoint": f"{base}/webpush/send", "subscribe": f"{base}/webpush/subscribe",
                     "vapid_public_key": vapid_public_key_b64(), "vapid_contact": settings.vapid_contact},
