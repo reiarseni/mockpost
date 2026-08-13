@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- SMTP advertises AUTH PLAIN/LOGIN without TLS and accepts any credential, so
+  clients that always log in (Flask-Mail, Nodemailer) need no changes.
+- Telegram serves 13 Bot API methods, including `getMe`, on GET and POST, and
+  reads JSON, form-urlencoded, multipart or query parameters.
+- Web Push acts as a real push service: `/webpush/subscribe` returns a
+  browser-shaped subscription and `/webpush/push/{id}` takes the aes128gcm
+  body with its VAPID header, decrypts the payload and answers 201.
+- Simulation of dead recipients: Web Push 410, FCM 404 UNREGISTERED and APNs
+  410 Unregistered, with MCP tools for all three.
+- MCP tools `create_push_subscription`, `list_push_subscriptions`,
+  `expire_push_subscription` and `simulate_push_token_unregistered`.
+- `MOCKPOST_STRICT_AUTH` enforces each channel's real authentication, plus
+  `MOCKPOST_SMTP_USERNAME`/`MOCKPOST_SMTP_PASSWORD`.
+- Captured messages carry a `meta` column with per-channel extras: HTML body
+  and attachments, APNs headers, Slack blocks, Discord embeds.
+
+### Changed
+- WhatsApp accepts any Graph version in the path, returns `wamid.` ids and
+  Graph error envelopes, and verifies webhooks over the real GET handshake.
+- Twilio returns `SM`+32 hex SIDs with the full message resource, serves it
+  over GET and posts StatusCallback as form-urlencoded to the request URL.
+- APNs answers 200 with an empty body and the `apns-id` header; Discord
+  answers 204 unless `wait=true`; Slack rejects empty payloads.
+- Stripe objects use `cs_test_`/`pi_test_` ids and carry `created`,
+  `client_secret`, `payment_status` and bracket-notation metadata.
+- OAuth validates `redirect_uri`/`client_id`, supports the `refresh_token`
+  grant, accepts JSON bodies and returns an `id_token` for `openid` scopes.
+
+### Fixed
+- Emails are parsed from bytes: 8bit UTF-8 bodies were captured with broken
+  accents because the MIME was parsed from an already decoded string.
+- Every recipient of a mail is captured, and each one gets its OTP row.
+- `getWebhookInfo` reads the webhook registry instead of process memory, so a
+  restart no longer reports the webhook as missing.
+
 ## [0.1.1] - 2026-08-13
 
 ### Added

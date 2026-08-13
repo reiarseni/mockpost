@@ -65,10 +65,10 @@ Then open `http://localhost:8090` — the email is on the timeline, and `get_lat
 
 | Channel | Point your app to | Typical env var |
 |---|---|---|
-| **Email (SMTP)** | `localhost:1025`, no auth | `SMTP_HOST=localhost`, `SMTP_PORT=1025` |
-| **Telegram** | `http://localhost:8090/telegram` (bot token goes in the URL: `/bot<TOKEN>/...`) | `TELEGRAM_API_BASE_URL` |
-| **WhatsApp** | `http://localhost:8090/whatsapp/v1` | `WHATSAPP_GRAPH_BASE_URL` |
-| **Web Push** | `http://localhost:8090/webpush/send` — real VAPID validation | `VAPID_PUBLIC_KEY` from `/config` |
+| **Email (SMTP)** | `localhost:1025` — AUTH PLAIN/LOGIN advertised, any credential accepted | `SMTP_HOST=localhost`, `SMTP_PORT=1025` |
+| **Telegram** | `http://localhost:8090/telegram` (bot token goes in the URL: `/bot<TOKEN>/...`) — JSON, form-urlencoded or multipart, GET or POST | `TELEGRAM_API_BASE_URL` |
+| **WhatsApp** | `http://localhost:8090/whatsapp/v21.0` (any Graph version works) | `WHATSAPP_GRAPH_BASE_URL` |
+| **Web Push** | `POST /webpush/subscribe` returns a browser-shaped subscription; send the encrypted push to its `endpoint` as pywebpush/web-push do | `VAPID_PUBLIC_KEY` from `/config` |
 | **SMS (Twilio)** | `http://localhost:8090/twilio/2010-04-01/Accounts/AC...` (any SID works) | `TWILIO_BASE_URL` |
 | **FCM** | `http://localhost:8090/fcm/v1/projects/{id}/messages:send` | `FCM_ENDPOINT` |
 | **APNs** | `http://localhost:8090/apns/3/device/{token}` | `APNS_ENDPOINT` |
@@ -166,6 +166,8 @@ The universal contract is the same: run the server with `command + args`, pass e
 | `get_latest_otp()` / `generate_totp_secret()` / `get_totp_code()` | Read OTP codes / TOTP for 2FA flows. |
 | `set_oauth_fake_profile()` / `get_oauth_session()` | Drive fake OAuth logins and inspect the resulting session. |
 | `register_webhook()` / `trigger_webhook()` / `list_webhook_deliveries()` | Manage and verify webhooks, including what the app returned (or that it was down). |
+| `create_push_subscription()` / `list_push_subscriptions()` / `expire_push_subscription()` | Hand your app a real Web Push subscription, then kill it to test the 410 cleanup path. |
+| `simulate_push_token_unregistered()` | Make an FCM or APNs token answer as uninstalled (404 / 410). |
 | `set_app()` / `set_test_id()` | Scope everything to one app / one test run. |
 | `clear_channel()` / `clear_all()` | Clean up between runs. |
 
@@ -217,12 +219,40 @@ Consequences:
 | `MOCKPOST_STRIPE_WEBHOOK_SECRET` | `whsec_<random>` |
 | `MOCKPOST_VAPID_CONTACT` | `mailto:mockpost@test.local` |
 | `MOCKPOST_OAUTH_JWT_KEY` | `<random>` |
+| `MOCKPOST_STRICT_AUTH` | `0` — set to `1` and every channel enforces its real authentication, answering the 401/403/535 the live API would |
+| `MOCKPOST_SMTP_USERNAME` / `MOCKPOST_SMTP_PASSWORD` | *(empty — any credential is accepted)* |
 
 ---
 
 ## Emulated channels
 
-Email (SMTP, no auth, MailHog-style) · Telegram Bot API (`sendMessage`/`getUpdates`/`sendPhoto`/`setWebhook`) · WhatsApp Cloud API (messages + statuses) · Web Push (real VAPID validation) · Twilio SMS (`Messages.json` + `StatusCallback`) · FCM · APNs · Slack · Discord · Stripe (checkout/payment_intents + signed `Stripe-Signature` events) · OTP (SMS/email/TOTP) · Fake OAuth2 for Google/GitHub/Facebook/X (JWT with local key) · Social webhooks (GitHub, Facebook, X) with per-provider signatures.
+Email (SMTP with AUTH, MailHog-style) · Telegram Bot API (13 methods, any body format) · WhatsApp Cloud API (any Graph version, messages + statuses) · Web Push (push service with real VAPID validation and payload decryption) · Twilio SMS (`Messages.json` + `StatusCallback`) · FCM · APNs · Slack · Discord · Stripe (checkout/payment_intents + signed `Stripe-Signature` events) · OTP (SMS/email/TOTP) · Fake OAuth2/OIDC for Google/GitHub/Facebook/X (JWT with local key) · Social webhooks (GitHub, Facebook, X) with per-provider signatures.
+
+## Protocol fidelity
+
+The goal is that an app points its real SDK at MockPost and notices nothing: no
+adapters, no client changes. That means matching more than the happy path.
+
+- **Transports and body formats.** Telegram takes JSON, form-urlencoded,
+  multipart or query parameters on GET and POST, like the live API; Slack and
+  Discord also read the form-encoded `payload` field; OAuth token requests take
+  form or JSON.
+- **Status codes and bodies.** Discord answers `204` with no body unless
+  `?wait=true`; APNs answers `200` with an empty body and the id in the
+  `apns-id` header; Slack answers the literal `ok`.
+- **Error envelopes.** Telegram `{ok, error_code, description}`, Graph
+  `{error: {message, type, code, fbtrace_id}}`, Google FCM `{error: {code,
+  message, status, details}}`, Stripe `{error: {message, type, code}}`, Twilio
+  `{code, message, status}`, OAuth `{error, error_description}`.
+- **Identifier shapes.** `wamid.…`, `SM`+32 hex, `cs_test_…`, `pi_test_…` with
+  its `client_secret`, `projects/{id}/messages/…`.
+- **Failure paths worth testing.** A dead Web Push subscription answers `410`,
+  an uninstalled FCM token `404 UNREGISTERED`, an APNs one `410 Unregistered`,
+  and an oversized APNs payload `413` — the signals a backend uses to prune its
+  own tables.
+
+Set `MOCKPOST_STRICT_AUTH=1` to also enforce authentication everywhere and get
+the real `401`/`403`/`535` when a client forgets its credentials.
 
 ---
 
