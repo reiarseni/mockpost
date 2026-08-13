@@ -51,9 +51,15 @@ def _config() -> dict:
                 "note": "account_sid and auth_token accept any value (HTTP Basic). SIDs are SM+32 hex "
                         "and StatusCallback is posted form-urlencoded to the URL of the request."},
         "fcm": {"endpoint": f"{base}/fcm/v1/projects/{{project_id}}/messages:send",
-                "env": "FCM_ENDPOINT=<endpoint>", "note": "Bearer token not validated (shape only)"},
+                "simulate_unregister": f"{base}/fcm/simulate/unregister",
+                "env": "FCM_ENDPOINT=<endpoint>",
+                "note": "Requires an OAuth bearer (any value), enforces the token/topic/condition "
+                        "exclusivity and honours validate_only as a dry run."},
         "apns": {"endpoint": f"{base}/apns/3/device/{{device_token}}",
-                 "env": "APNS_ENDPOINT=<endpoint>"},
+                 "simulate_unregister": f"{base}/apns/simulate/unregister",
+                 "env": "APNS_ENDPOINT=<endpoint>",
+                 "note": "Answers 200 with an empty body and the apns-id header; failures use "
+                         "{'reason': ...} with the real status (410 Unregistered, 413 PayloadTooLarge)."},
         "slack": {"webhook_pattern": f"{base}/slack/webhook/{{webhook_id}}",
                   "env": "SLACK_WEBHOOK_URL=<url with your webhook_id>"},
         "discord": {"webhook_pattern": f"{base}/discord/webhook/{{webhook_id}}",

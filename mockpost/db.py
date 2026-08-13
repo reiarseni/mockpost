@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS webpush_subscriptions (
     created_at        TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+    channel       TEXT NOT NULL,           -- fcm | apns
+    token         TEXT NOT NULL,
+    state         TEXT NOT NULL,           -- active | unregistered
+    updated_at    TEXT NOT NULL,
+    PRIMARY KEY (channel, token)
+);
+
 CREATE TABLE IF NOT EXISTS otp_codes (
     id            TEXT PRIMARY KEY,
     test_id       TEXT,

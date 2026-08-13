@@ -66,6 +66,25 @@ async def maybe_store_otp(channel: str, body: str, identifier: str | None, test_
     await db.commit()
 
 
+async def set_device_state(channel: str, token: str, state: str) -> None:
+    """Mark a native push token as active or unregistered (FCM 404 / APNs 410)."""
+    db = get_db()
+    await db.execute(
+        "INSERT INTO device_tokens (channel, token, state, updated_at) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(channel, token) DO UPDATE SET state=excluded.state, updated_at=excluded.updated_at",
+        (channel, token, state, utcnow()),
+    )
+    await db.commit()
+
+
+async def get_device_state(channel: str, token: str) -> str:
+    db = get_db()
+    cur = await db.execute("SELECT state FROM device_tokens WHERE channel=? AND token=?",
+                           (channel, token))
+    row = await cur.fetchone()
+    return row["state"] if row else "active"
+
+
 async def update_message_status(msg_id: str, status: str) -> None:
     db = get_db()
     now = utcnow()
