@@ -19,7 +19,13 @@ def _config() -> dict:
                  "note": "Register apps with their fake credentials in /api/apps; "
                          "MockPost identifies each app by those credentials (no extra headers)."},
         "mail": {"protocol": "SMTP", "host": "localhost", "port": settings.smtp_port,
-                 "auth": "none", "env": "SMTP_HOST=localhost", "env_port": f"SMTP_PORT={settings.smtp_port}"},
+                 "auth": "required" if settings.strict_auth else "any",
+                 "auth_mechanisms": ["PLAIN", "LOGIN"], "starttls": False,
+                 "username": settings.smtp_username or "<any>",
+                 "password": settings.smtp_password or "<any>",
+                 "env": "SMTP_HOST=localhost", "env_port": f"SMTP_PORT={settings.smtp_port}",
+                 "note": "AUTH is advertised without TLS and any credential is accepted, so "
+                         "clients that always log in (Flask-Mail, Nodemailer) need no changes."},
         "telegram": {"base_url": f"{base}/telegram", "env": "TELEGRAM_API_BASE_URL=<base_url>",
                      "note": "Put the bot token in the URL: /telegram/bot<TOKEN>/..."},
         "whatsapp": {"base_url": f"{base}/whatsapp/v1", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>"},
