@@ -17,7 +17,6 @@ MockPost is a local, multi-channel message emulator for end-to-end testing. Poin
 ![Timeline](docs/demo/timeline.png)
 ![Telegram channel](docs/demo/telegram.png)
 ![Apps](docs/demo/apps.png)
-![Configuration](docs/demo/config.png)
 
 ---
 

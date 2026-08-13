@@ -1,9 +1,9 @@
 # CLAUDE.md — MockPost contribution workflow
 
-This file documents the git workflow for MockPost, distilled from the
-`release-plan` skill conventions. Follow it for every change: commits,
-branches, issues and pull requests must read as written by a senior
-developer — natural, concise, technical prose. No AI marks anywhere.
+This file documents the git workflow for MockPost: how commits, branches,
+issues and pull requests are named and structured. Every artifact must read
+as written by a senior developer — natural, concise, technical prose.
+No AI marks anywhere.
 
 ## Language
 
@@ -29,8 +29,7 @@ Valid prefixes:
 Rules:
 
 - Summary in **third-person singular** ("adds X", "fixes Y") — never imperative ("add X").
-- No accents, no parentheses, max **72 characters** (validated with
-  `bash ~/.claude/skills/release-plan/validate-msg.sh "<title>"`).
+- No accents, no parentheses, max **72 characters**.
 - **Body** — pick the case that applies, in order:
   - **A — No body**: title fully explains the change.
   - **B — Short prose** (small, unit-like change): 1-2 direct lines explaining
@@ -50,16 +49,15 @@ Pattern: `<prefix>/<N>-<kebab-case-description>`
 - Bug fixes: `fix/23-error-snapshot-nulo`.
 - Description in **kebab-case**, lowercase, no accents.
 
-> **Language note:** the `release-plan` default mandates Spanish branch
-> descriptions. This project commits in English but keeps branch names in
-> Spanish kebab-case per that rule. If you prefer English branches, say so
-> once and it becomes the project rule.
+> **Language note:** commit titles and bodies are English, but branch
+> descriptions stay in Spanish kebab-case by project convention. If you
+> prefer English branches, say so once and it becomes the project rule.
 
 One branch per issue; mergeable and deployable independently.
 
 ## Issues
 
-Titles orient to delivered value; bodies use the `release-plan` templates:
+Titles orient to delivered value; bodies follow these templates:
 
 - **feat**: `Title` + `User story: As <role>, I want <action>, so that <benefit>.`
   + `Why` + Gherkin scenarios (`Scenario / Given / When / Then`) + `Out of scope`.
@@ -83,14 +81,14 @@ No labels, no quick actions.
 
 ## Workflow per change
 
-1. `openspec` proposal → issue → branch (`feat/N-desc` or `fix/N-desc`).
-2. Commit per layer with the rules above; validate each title.
-3. Push branch, open PR with the template, self-review.
-4. After merge: delete branch, close issue via the PR.
+1. Define the change and open an issue with the matching template.
+2. Create a branch (`feat/N-desc` or `fix/N-desc`).
+3. Commit per layer with the rules above.
+4. Push the branch, open a PR with the template, self-review.
+5. After merge: delete the branch, close the issue via the PR.
 
 ## Validation
 
-```bash
-bash ~/.claude/skills/release-plan/validate-msg.sh "feat: adds otp verification"
-# ✓ OK → usable; ✗ FALLO → reword before committing
-```
+Before committing, check the title against the rules: valid prefix, third
+person singular, no accents, no parentheses, max 72 characters. Reword
+until it complies.
