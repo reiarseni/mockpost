@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}MockPost — Configuration{% endblock %}
+{% block content %}
+<h1>Per-channel configuration</h1>
+<p class="hint">Values your app should use in the test environment. Everything is local; no secret is real.</p>
+
+{% for channel, conf in config.items() %}
+<section class="card">
+  <h2>{{ names.get(channel, channel) }} <span class="mono small">{{ channel }}</span></h2>
+  <pre class="json">{{ conf | tojson(indent=2) }}</pre>
+</section>
+{% endfor %}
+{% endblock %}

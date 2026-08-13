@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}MockPost — Timeline{% endblock %}
+{% block content %}
+<h1>Timeline</h1>
+
+<div class="toolbar">
+  <div class="tabs">
+    <a href="/" class="tab {% if not current_channel %}active{% endif %}">All</a>
+    {% for c in channels %}
+      <a href="/?channel={{ c }}" class="tab {% if current_channel == c %}active{% endif %}">{{ icons[c] }} {{ names[c] }}</a>
+    {% endfor %}
+  </div>
+  <form class="filters" method="get">
+    {% if current_channel %}<input type="hidden" name="channel" value="{{ current_channel }}">{% endif %}
+    <select name="app">
+      <option value="">All apps</option>
+      {% for a in apps %}
+      <option value="{{ a.name }}" {% if a.name == current_app %}selected{% endif %}>{{ a.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="q" placeholder="Search..." value="{{ q }}">
+    <input type="text" name="test_id" placeholder="test_id" value="{{ test_id }}">
+    <button type="submit">Filter</button>
+    <button type="button" id="copy-md">Copy as Markdown</button>
+    <label class="auto"><input type="checkbox" id="auto-refresh"> auto-refresh 3s</label>
+  </form>
+</div>
+
+<table class="timeline">
+  <thead>
+    <tr><th>Time</th><th>Channel</th><th>Direction</th><th>From → To</th><th>Summary</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for e in events %}
+    <tr class="dir-{{ e.direction }}">
+      <td class="mono">{{ e.timestamp[11:19] }}</td>
+      <td>{{ e.icon }} {{ names.get(e.channel, e.channel) }}{% if e.app %}<span class="badge app-tag">{{ e.app }}</span>{% endif %}</td>
+      <td>{{ e.direction }}</td>
+      <td class="mono small">{{ e.sender or '' }} → {{ e.recipient or '' }}</td>
+      <td><a href="/message/{{ e.message_id }}">{{ e.summary }}</a></td>
+      <td><span class="badge status-{{ e.status }}">{{ e.status }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">No events yet. Send a message from your app and it will show up here.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<details class="md-view">
+  <summary>Markdown view</summary>
+  <pre id="md-content">{{ markdown }}</pre>
+</details>
+
+<script>
+  document.getElementById('copy-md').addEventListener('click', async () => {
+    const text = document.getElementById('md-content').textContent;
+    await navigator.clipboard.writeText(text);
+    alert('Markdown copied');
+  });
+  const ar = document.getElementById('auto-refresh');
+  if (ar) ar.addEventListener('change', () => {
+    if (ar.checked) setInterval(() => location.reload(), 3000);
+  });
+</script>
+{% endblock %}

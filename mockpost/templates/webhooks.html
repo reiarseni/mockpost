@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}MockPost — Webhooks{% endblock %}
+{% block content %}
+<h1>Registered webhooks</h1>
+
+<form class="filters" method="get">
+  <select name="channel">
+    <option value="">All</option>
+    {% for c in channels %}
+    <option value="{{ c }}" {% if c == current_channel %}selected{% endif %}>{{ names.get(c, c) }}</option>
+    {% endfor %}
+  </select>
+  <select name="app">
+    <option value="">All apps</option>
+    {% for a in apps %}
+    <option value="{{ a.name }}" {% if a.name == current_app %}selected{% endif %}>{{ a.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<section class="card">
+  <h2>Register webhook</h2>
+  <p class="hint">Channels with webhooks back to the app: Telegram (<code>setWebhook</code>), WhatsApp, SMS (Twilio <code>StatusCallback</code>) and Stripe (signed events). Other channels only capture outbound sends. The webhook is bound to the selected app and only receives events from it.</p>
+  <form class="inline-form" method="post" action="/api/webhooks" data-js-form>
+    <input type="hidden" name="channel" value="telegram">
+    <select name="channel-select">
+      {% for c in channels %}<option value="{{ c }}">{{ names.get(c, c) }}</option>{% endfor %}
+    </select>
+    <select name="app-select">
+      <option value="">No app (global)</option>
+      {% for a in apps %}<option value="{{ a.name }}">{{ a.name }}</option>{% endfor %}
+    </select>
+    <input type="text" name="target_url" placeholder="https://your-app.local/webhooks/telegram" required>
+    <input type="text" name="token" placeholder="token (optional)">
+    <button type="submit">Register</button>
+  </form>
+</section>
+
+<table class="timeline">
+  <thead>
+    <tr><th>Channel</th><th>App</th><th>Target URL</th><th>Token</th><th>Created</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for w in webhooks %}
+    <tr>
+      <td>{{ w.channel }}</td>
+      <td>{{ app_names.get(w.app_id, 'global') }}</td>
+      <td class="mono small">{{ w.target_url }}</td>
+      <td class="mono small">{{ w.token or '' }}</td>
+      <td class="mono small">{{ w.created_at }}</td>
+      <td>
+        <button class="btn trigger" data-id="{{ w.id }}" data-url="{{ w.target_url }}">Fire test event</button>
+        <button class="btn danger delete" data-id="{{ w.id }}">Delete</button>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">No webhooks registered.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+  document.querySelectorAll('.delete').forEach(b => b.addEventListener('click', async () => {
+    await fetch('/api/webhooks/' + b.dataset.id, { method: 'DELETE' });
+    location.reload();
+  }));
+  document.querySelectorAll('.trigger').forEach(b => b.addEventListener('click', async () => {
+    const res = await fetch('/api/webhooks/' + b.dataset.id + '/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: 'test', payload: { text: 'test event' } })
+    });
+    const data = await res.json();
+    alert('Response: ' + JSON.stringify(data));
+  }));
+  document.querySelectorAll('[data-js-form]').forEach(f => f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(f);
+    const payload = {
+      channel: f.querySelector('[name=channel-select]').value,
+      app: f.querySelector('[name=app-select]').value || null,
+      target_url: fd.get('target_url'),
+      token: fd.get('token') || null
+    };
+    const res = await fetch('/api/webhooks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    location.reload();
+  }));
+</script>
+{% endblock %}

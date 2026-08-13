@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MockPost{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="logo">🚌</span> MockPost</div>
+    <nav>
+      <a href="/">Timeline</a>
+      <a href="/webhooks">Webhooks</a>
+      <a href="/apps">Apps</a>
+      <a href="/config">Configuration</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>MockPost — a testing emulator. No message ever leaves this machine.</footer>
+</body>
+</html>

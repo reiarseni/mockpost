@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}MockPost — {{ name }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/">← Timeline</a></nav>
+<h1>{{ icon }} {{ name }}</h1>
+
+<form class="filters" method="get">
+  <input type="text" name="test_id" placeholder="test_id" value="{{ test_id }}">
+  <button type="submit">Filter</button>
+</form>
+
+<table class="timeline">
+  <thead>
+    <tr><th>Time</th><th>Direction</th><th>From → To</th><th>Summary</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for m in messages %}
+    <tr class="dir-{{ m.direction }}">
+      <td class="mono">{{ m.created_at[11:19] }}</td>
+      <td>{{ m.direction }}</td>
+      <td class="mono small">{{ m.sender or '' }} → {{ m.recipient or '' }}</td>
+      <td><a href="/message/{{ m.id }}">{{ m.subject or m.body[:80] }}</a></td>
+      <td><span class="badge status-{{ m.status }}">{{ m.status }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="empty">No messages in {{ name }}.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

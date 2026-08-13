@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}MockPost — Apps{% endblock %}
+{% block content %}
+<h1>Registered apps</h1>
+<p class="hint">Each app is identified by its fake credentials (bot token, SID, sk_test...). The app sends no extra headers: MockPost recognizes it from what already travels in the real protocol. Webhooks are only delivered to the matching app.</p>
+
+<section class="card">
+  <h2>Register / update app</h2>
+  <form class="inline-form" data-js-app-form>
+    <input type="text" name="name" placeholder="app name (e.g. web-shop)" required>
+    <input type="text" name="telegram_token" placeholder="Telegram bot token (optional)">
+    <input type="text" name="twilio_sid" placeholder="Twilio SID (optional)">
+    <input type="text" name="stripe_key" placeholder="Stripe sk_test_... (optional)">
+    <input type="text" name="whatsapp_phone_id" placeholder="WhatsApp phone_id (optional)">
+    <input type="text" name="fcm_project_id" placeholder="FCM project_id (optional)">
+    <button type="submit">Save</button>
+  </form>
+  <p class="hint small">Per-app SMTP: set <code>MOCKPOST_APPS='app-a:1025,app-b:1026'</code> at startup; each port identifies its app automatically.</p>
+</section>
+
+<table class="timeline">
+  <thead>
+    <tr><th>App</th><th>Credentials</th><th>Created</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    {% for a in apps %}
+    <tr>
+      <td><strong>{{ a.name }}</strong></td>
+      <td class="mono small">
+        {% for k, v in a.creds.items() %}{{ k }}={{ v }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+        {% if not a.creds %}<span class="empty">no credentials</span>{% endif %}
+      </td>
+      <td class="mono small">{{ a.created_at }}</td>
+      <td><button class="btn danger delete" data-id="{{ a.id }}">Delete</button></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="empty">No apps registered.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+  document.querySelectorAll('.delete').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Delete this app? Its webhooks become global.')) return;
+    await fetch('/api/apps/' + b.dataset.id, { method: 'DELETE' });
+    location.reload();
+  }));
+  document.querySelector('[data-js-app-form]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const creds = {};
+    for (const k of ['telegram_token', 'twilio_sid', 'stripe_key', 'whatsapp_phone_id', 'fcm_project_id']) {
+      const v = fd.get(k);
+      if (v) creds[k] = v;
+    }
+    await fetch('/api/apps', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: fd.get('name'), creds })
+    });
+    location.reload();
+  });
+</script>
+{% endblock %}

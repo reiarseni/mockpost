@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}MockPost — Message detail{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/">← Timeline</a> · <a href="/channel/{{ m.channel }}">{{ icon }} {{ m.channel }}</a></nav>
+
+<h1>{{ icon }} Message detail</h1>
+<pre class="json">{{ m.raw_payload }}</pre>
+
+<table class="meta">
+  <tr><th>ID</th><td class="mono">{{ m.id }}</td></tr>
+  <tr><th>Channel</th><td>{{ m.channel }}</td></tr>
+  <tr><th>Direction</th><td>{{ m.direction }}</td></tr>
+  <tr><th>From</th><td class="mono">{{ m.sender or '' }}</td></tr>
+  <tr><th>To</th><td class="mono">{{ m.recipient or '' }}</td></tr>
+  <tr><th>Subject</th><td>{{ m.subject or '' }}</td></tr>
+  <tr><th>Status</th><td><span class="badge status-{{ m.status }}">{{ m.status }}</span></td></tr>
+  <tr><th>Created</th><td class="mono">{{ m.created_at }}</td></tr>
+</table>
+
+{% if m.channel == 'mail' and m.body %}
+<h2>Body</h2>
+<pre class="body">{{ m.body }}</pre>
+{% endif %}
+{% endblock %}
