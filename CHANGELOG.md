@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-13
+
 ### Added
 - SMTP advertises AUTH PLAIN/LOGIN without TLS and accepts any credential, so
   clients that always log in (Flask-Mail, Nodemailer) need no changes.
