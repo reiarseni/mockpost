@@ -27,6 +27,7 @@ from pydantic import BaseModel
 
 from mockpost.apps import resolve_app
 from mockpost.config import settings
+from mockpost.db import get_db
 from mockpost.request_ctx import get_app_id, get_test_id
 from mockpost.store import insert_message, register_webhook
 from mockpost.webhooks import deliver_to_app_webhooks
@@ -37,7 +38,6 @@ router = APIRouter(prefix="/telegram", tags=["telegram"])
 TOKEN_RE = re.compile(r"^\d+:[A-Za-z0-9_-]{35}$")
 
 _message_ids = count(1000)
-_webhooks: dict[str, str] = {}
 
 
 class ClientMessage(BaseModel):
@@ -232,17 +232,25 @@ async def m_set_webhook(token: str, params: dict, request: Request):
     app = await resolve_app("telegram", token)
     await register_webhook("telegram", url, token=token, config={"bot_token": token},
                            app_id=app["id"] if app else None)
-    _webhooks[token] = url
     return {"ok": True, "result": True, "description": "Webhook was set"}
 
 
 async def m_delete_webhook(token: str, params: dict, request: Request):
-    _webhooks.pop(token, None)
+    db = get_db()
+    await db.execute("DELETE FROM webhooks_registry WHERE channel='telegram' AND token=?", (token,))
+    await db.commit()
     return {"ok": True, "result": True, "description": "Webhook was deleted"}
 
 
 async def m_get_webhook_info(token: str, params: dict, request: Request):
-    return {"ok": True, "result": {"url": _webhooks.get(token, ""),
+    # Read from the registry, not from process memory: a restart must not
+    # forget the webhook the app registered.
+    db = get_db()
+    cur = await db.execute(
+        "SELECT target_url FROM webhooks_registry WHERE channel='telegram' AND token=? "
+        "ORDER BY created_at DESC LIMIT 1", (token,))
+    row = await cur.fetchone()
+    return {"ok": True, "result": {"url": row["target_url"] if row else "",
                                    "has_custom_certificate": False,
                                    "pending_update_count": 0,
                                    "max_connections": 40}}
