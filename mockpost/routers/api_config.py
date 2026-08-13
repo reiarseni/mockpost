@@ -34,7 +34,9 @@ def _config() -> dict:
                      "note": "Put the bot token in the URL: /telegram/bot<TOKEN>/... . "
                              "Every method answers on GET and POST and reads JSON, "
                              "form-urlencoded, multipart or query parameters."},
-        "whatsapp": {"base_url": f"{base}/whatsapp/v1", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>"},
+        "whatsapp": {"base_url": f"{base}/whatsapp/v21.0", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>",
+                     "note": "Any Graph version works in the path (/whatsapp/v{version}/{phone_id}/messages); "
+                             "webhook verification is the real GET with hub.mode/hub.verify_token/hub.challenge."},
         "webpush": {"subscribe": f"{base}/webpush/subscribe",
                     "push_endpoint_pattern": f"{base}/webpush/push/{{subscription_id}}",
                     "expire": f"{base}/webpush/subscriptions/{{subscription_id}}/expire",
@@ -45,7 +47,9 @@ def _config() -> dict:
                             "web-push do, and MockPost verifies VAPID and decrypts the payload. "
                             "/webpush/send is the JSON shortcut for callers that skip the crypto."},
         "sms": {"base_url": f"{base}/twilio/2010-04-01/Accounts/AC00000000000000000000000000000000",
-                "env": "TWILIO_BASE_URL=<base_url>", "note": "account_sid and auth_token accept any value"},
+                "env": "TWILIO_BASE_URL=<base_url>",
+                "note": "account_sid and auth_token accept any value (HTTP Basic). SIDs are SM+32 hex "
+                        "and StatusCallback is posted form-urlencoded to the URL of the request."},
         "fcm": {"endpoint": f"{base}/fcm/v1/projects/{{project_id}}/messages:send",
                 "env": "FCM_ENDPOINT=<endpoint>", "note": "Bearer token not validated (shape only)"},
         "apns": {"endpoint": f"{base}/apns/3/device/{{device_token}}",

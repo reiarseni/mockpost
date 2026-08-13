@@ -68,9 +68,13 @@ async def deliver_webhook(
     headers: dict[str, str] | None = None,
     test_id: str | None = None,
     app_id: str | None = None,
+    form: bool = False,
 ) -> dict:
     """POST the event to target_url and record the result in webhook_events
-    (response code + body returned by the app, or an error if it was down)."""
+    (response code + body returned by the app, or an error if it was down).
+
+    `form` sends the payload as x-www-form-urlencoded instead of JSON, which is
+    how Twilio posts its StatusCallback."""
     db = get_db()
     event_id = str(uuid.uuid4())
     response_code = None
@@ -78,7 +82,10 @@ async def deliver_webhook(
     try:
         _validate_webhook_url(target_url)
         async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=False) as client:
-            resp = await client.post(target_url, json=payload, headers=headers or {})
+            if form:
+                resp = await client.post(target_url, data=payload, headers=headers or {})
+            else:
+                resp = await client.post(target_url, json=payload, headers=headers or {})
             response_code = resp.status_code
             response_body = resp.text[:2000]
     except (httpx.HTTPError, ValueError) as exc:
