@@ -1,7 +1,7 @@
 {
   "name": "io.github.reiarseni/mockpost",
   "displayName": "MockPost",
-  "description": "Local multi-channel message emulator with a web timeline and MCP tools: inspect captured email/Telegram/WhatsApp/SMS/push/Stripe messages, read OTP codes and simulate inbound events for E2E testing.",
+  "description": "Local multi-channel message emulator for end-to-end testing: captures outgoing email (SMTP), Telegram, WhatsApp, SMS (Twilio), Web Push (real VAPID), FCM, APNs, Slack, Discord, Stripe, OTP codes and fake OAuth sessions (Google, GitHub, Facebook, X); simulates inbound events and signed webhooks (Stripe-Signature, X-Hub-Signature-256, X-Twitter-Webhooks-Signature) back to your app, with a unified web timeline, per-app isolation via fake credentials, and MCP tools for LLM agents to inspect and drive test runs.",
   "packages": [
     {
       "name": "mockpost",
