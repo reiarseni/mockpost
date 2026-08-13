@@ -90,6 +90,8 @@ The `/config` page shows exact values plus copy-paste snippets per channel.
 
 MockPost exposes an **MCP server over stdio**. Any harness that speaks MCP gets tools to inspect the timeline, read OTPs, and fire simulated events — so your agent can verify end-to-end behavior autonomously.
 
+> **Prerequisite:** the MockPost HTTP service must be running (default `http://localhost:8090`). The MCP server is a client of its internal API, so every tool call needs it up.
+
 The MCP server ships with the repo and runs with `python -m mcp_server.server` (requires the Python deps from `requirements.txt`; `MOCKPOST_URL` defaults to `http://localhost:8090`).
 
 ### Claude Code
