@@ -124,7 +124,7 @@ def _ensure_dir(path: str) -> None:
 async def init_db() -> None:
     _ensure_dir(settings.db_path)
     global _conn, _conn_path
-    # reabre si cambió el path (tests usan DB por fixture; en producción es fijo)
+    # reopen if the path changed (tests use a DB per fixture; fixed in prod)
     if _conn is not None and _conn_path == settings.db_path:
         return
     if _conn is not None:
