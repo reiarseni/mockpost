@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-13
+
+### Added
+- Registers the server in the MCP Registry: `server.json` migrated to the
+  2025-12-11 schema and `mcp-name` marker added to the PyPI README.
+
+## [0.1.0] - 2026-08-13
+
 ### Added
 - Initial release of MockPost, a local multi-channel message emulator.
 - Channels: SMTP email (no auth, MailHog-style), Telegram Bot API

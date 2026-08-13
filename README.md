@@ -1,5 +1,7 @@
 # 🚌 MockPost
 
+<!-- mcp-name: io.github.reiarseni/mockpost -->
+
 **Your app thinks it's talking to Stripe, Telegram, Twilio and Gmail… but it's MockPost.**
 
 ![demo](docs/demo/demo-timeline.gif)

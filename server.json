@@ -1,55 +1,25 @@
 {
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.reiarseni/mockpost",
-  "displayName": "MockPost",
-  "description": "Local multi-channel message emulator for end-to-end testing: captures outgoing email (SMTP), Telegram, WhatsApp, SMS (Twilio), Web Push (real VAPID), FCM, APNs, Slack, Discord, Stripe, OTP codes and fake OAuth sessions (Google, GitHub, Facebook, X); simulates inbound events and signed webhooks (Stripe-Signature, X-Hub-Signature-256, X-Twitter-Webhooks-Signature) back to your app, with a unified web timeline, per-app isolation via fake credentials, and MCP tools for LLM agents to inspect and drive test runs.",
+  "description": "Local multi-channel message emulator for E2E testing, with MCP tools for LLM agents.",
+  "version": "0.1.1",
   "packages": [
     {
-      "name": "mockpost",
-      "type": "pypi",
-      "repository": "https://pypi.org/project/mockpost/"
+      "registryType": "pypi",
+      "identifier": "mockpost",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Base URL of the MockPost HTTP service (default http://localhost:8090)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "MOCKPOST_URL"
+        }
+      ]
     }
-  ],
-  "transport": "stdio",
-  "installations": [
-    {
-      "type": "uvx",
-      "command": "uvx",
-      "args": ["mockpost-mcp"]
-    }
-  ],
-  "environmentVariables": {
-    "MOCKPOST_URL": {
-      "description": "Base URL of the MockPost HTTP service (default http://localhost:8090)",
-      "required": false
-    }
-  },
-  "tools": [
-    "get_timeline_markdown",
-    "list_sent_messages",
-    "get_message_detail",
-    "simulate_incoming_message",
-    "simulate_delivery_webhook",
-    "simulate_stripe_event",
-    "simulate_github_event",
-    "simulate_facebook_event",
-    "simulate_x_event",
-    "verify_facebook_webhook",
-    "get_latest_otp",
-    "generate_totp_secret",
-    "get_totp_code",
-    "set_oauth_fake_profile",
-    "get_oauth_session",
-    "get_channel_config",
-    "register_webhook",
-    "list_webhooks",
-    "trigger_webhook",
-    "list_webhook_deliveries",
-    "register_app",
-    "list_apps",
-    "delete_app",
-    "set_app",
-    "set_test_id",
-    "clear_channel",
-    "clear_all"
   ]
 }
