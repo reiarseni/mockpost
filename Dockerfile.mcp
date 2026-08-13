@@ -1,0 +1,21 @@
+# MCP server image: standalone stdio process, talks HTTP to the main service.
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+COPY pyproject.toml README.md LICENSE ./
+COPY mockpost/ mockpost/
+COPY mockpost_mcp/ mockpost_mcp/
+
+RUN pip install --no-cache-dir uv && \
+    uv venv /opt/venv && \
+    uv pip install --python /opt/venv/bin/python .
+
+FROM python:3.12-slim
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    MOCKPOST_URL=http://mockpost:8090
+
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+
+CMD ["mockpost-mcp"]

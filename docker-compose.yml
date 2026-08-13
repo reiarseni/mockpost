@@ -1,0 +1,18 @@
+services:
+  mockpost:
+    build: .
+    ports:
+      - "127.0.0.1:8090:8090"   # HTTP: emulated channels + panel + internal API (localhost only)
+      - "127.0.0.1:1025:1025"   # SMTP (localhost only)
+    volumes:
+      - ./data:/app/data   # mockpost.db persisted here
+
+  mockpost-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    environment:
+      - MOCKPOST_URL=http://mockpost:8090
+    depends_on:
+      - mockpost
+    # The MCP does not mount the DB: it talks HTTP to the internal API
