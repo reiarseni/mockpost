@@ -35,8 +35,15 @@ def _config() -> dict:
                              "Every method answers on GET and POST and reads JSON, "
                              "form-urlencoded, multipart or query parameters."},
         "whatsapp": {"base_url": f"{base}/whatsapp/v1", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>"},
-        "webpush": {"endpoint": f"{base}/webpush/send", "subscribe": f"{base}/webpush/subscribe",
-                    "vapid_public_key": vapid_public_key_b64(), "vapid_contact": settings.vapid_contact},
+        "webpush": {"subscribe": f"{base}/webpush/subscribe",
+                    "push_endpoint_pattern": f"{base}/webpush/push/{{subscription_id}}",
+                    "expire": f"{base}/webpush/subscriptions/{{subscription_id}}/expire",
+                    "send": f"{base}/webpush/send",
+                    "vapid_public_key": vapid_public_key_b64(), "vapid_contact": settings.vapid_contact,
+                    "note": "POST /webpush/subscribe returns a browser-shaped PushSubscription; "
+                            "send the encrypted push to its endpoint exactly as pywebpush or "
+                            "web-push do, and MockPost verifies VAPID and decrypts the payload. "
+                            "/webpush/send is the JSON shortcut for callers that skip the crypto."},
         "sms": {"base_url": f"{base}/twilio/2010-04-01/Accounts/AC00000000000000000000000000000000",
                 "env": "TWILIO_BASE_URL=<base_url>", "note": "account_sid and auth_token accept any value"},
         "fcm": {"endpoint": f"{base}/fcm/v1/projects/{{project_id}}/messages:send",

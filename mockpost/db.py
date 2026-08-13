@@ -66,7 +66,11 @@ CREATE TABLE IF NOT EXISTS webpush_subscriptions (
     endpoint          TEXT NOT NULL,
     p256dh            TEXT NOT NULL,
     auth              TEXT NOT NULL,
+    private_key       TEXT,                -- kept only for keys MockPost generated, to decrypt
     vapid_public_key  TEXT,
+    status            TEXT NOT NULL DEFAULT 'active',   -- active | gone (410 on push)
+    test_id           TEXT,
+    app_id            TEXT,
     created_at        TEXT NOT NULL
 );
 
@@ -161,6 +165,12 @@ async def _migrate(conn: aiosqlite.Connection) -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_webhook_events_app ON webhook_events(app_id)")
     if "response_body" not in we_cols:
         await conn.execute("ALTER TABLE webhook_events ADD COLUMN response_body TEXT")
+    cur = await conn.execute("PRAGMA table_info(webpush_subscriptions)")
+    sub_cols = {r[1] for r in await cur.fetchall()}
+    for column, ddl in (("private_key", "TEXT"), ("status", "TEXT NOT NULL DEFAULT 'active'"),
+                        ("test_id", "TEXT"), ("app_id", "TEXT")):
+        if column not in sub_cols:
+            await conn.execute(f"ALTER TABLE webpush_subscriptions ADD COLUMN {column} {ddl}")
 
 
 async def close_db() -> None:

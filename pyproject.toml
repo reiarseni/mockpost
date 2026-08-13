@@ -30,6 +30,7 @@ dependencies = [
   "aiosmtpd",
   "aiosqlite",
   "py-vapid",
+  "http-ece>=1.2",
   "mcp>=1,<2",
   "fastmcp>=1,<2",
   "pyotp",
@@ -50,7 +51,7 @@ mockpost = "mockpost.cli:main"
 mockpost-mcp = "mockpost_mcp.server:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pywebpush>=2"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["mockpost", "mockpost_mcp"]
