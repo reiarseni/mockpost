@@ -1,0 +1,55 @@
+{
+  "name": "io.github.reiarseni/mockpost",
+  "displayName": "MockPost",
+  "description": "Local multi-channel message emulator with a web timeline and MCP tools: inspect captured email/Telegram/WhatsApp/SMS/push/Stripe messages, read OTP codes and simulate inbound events for E2E testing.",
+  "packages": [
+    {
+      "name": "mockpost",
+      "type": "pypi",
+      "repository": "https://pypi.org/project/mockpost/"
+    }
+  ],
+  "transport": "stdio",
+  "installations": [
+    {
+      "type": "uvx",
+      "command": "uvx",
+      "args": ["mockpost-mcp"]
+    }
+  ],
+  "environmentVariables": {
+    "MOCKPOST_URL": {
+      "description": "Base URL of the MockPost HTTP service (default http://localhost:8090)",
+      "required": false
+    }
+  },
+  "tools": [
+    "get_timeline_markdown",
+    "list_sent_messages",
+    "get_message_detail",
+    "simulate_incoming_message",
+    "simulate_delivery_webhook",
+    "simulate_stripe_event",
+    "simulate_github_event",
+    "simulate_facebook_event",
+    "simulate_x_event",
+    "verify_facebook_webhook",
+    "get_latest_otp",
+    "generate_totp_secret",
+    "get_totp_code",
+    "set_oauth_fake_profile",
+    "get_oauth_session",
+    "get_channel_config",
+    "register_webhook",
+    "list_webhooks",
+    "trigger_webhook",
+    "list_webhook_deliveries",
+    "register_app",
+    "list_apps",
+    "delete_app",
+    "set_app",
+    "set_test_id",
+    "clear_channel",
+    "clear_all"
+  ]
+}
