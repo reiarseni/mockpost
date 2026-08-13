@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+aiosmtpd
+aiosqlite
+py-vapid
+mcp>=1,<2
+fastmcp>=1,<2
+pyotp
+pyjwt
+jinja2
+httpx>=0.28,<1
+cryptography

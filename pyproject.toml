@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mockpost"
+version = "0.1.0"
+description = "Local multi-channel message emulator for E2E testing, with an MCP server for LLM agents."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["mcp", "mcp-server", "testing", "test-automation", "mock", "emulator", "smtp", "telegram", "whatsapp", "stripe", "e2e-testing"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Software Development :: Testing :: Mocking",
+]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]",
+  "aiosmtpd",
+  "aiosqlite",
+  "py-vapid",
+  "mcp>=1,<2",
+  "fastmcp>=1,<2",
+  "pyotp",
+  "pyjwt",
+  "jinja2",
+  "httpx>=0.28,<1",
+  "cryptography",
+]
+
+[project.urls]
+Homepage = "https://github.com/reiarseni/mockpost"
+Repository = "https://github.com/reiarseni/mockpost"
+Documentation = "https://github.com/reiarseni/mockpost#readme"
+Issues = "https://github.com/reiarseni/mockpost/issues"
+
+[project.scripts]
+mockpost = "mockpost.cli:main"
+mockpost-mcp = "mockpost_mcp.server:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mockpost", "mockpost_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
