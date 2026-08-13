@@ -25,28 +25,30 @@ mcp = FastMCP("mockpost")
 _state: dict[str, Any] = {}
 
 
-def _headers() -> dict[str, str]:
+def _headers(app: str | None = None) -> dict[str, str]:
     headers = {}
     if _state.get("test_id"):
         headers["X-MockPost-Test-ID"] = _state["test_id"]
-    if _state.get("app"):
+    if app:
+        headers["X-MockPost-App"] = app
+    elif _state.get("app"):
         headers["X-MockPost-App"] = _state["app"]
     return headers
 
 
-def _get(path: str, params: dict | None = None) -> Any:
+def _get(path: str, params: dict | None = None, app: str | None = None) -> Any:
     with httpx.Client(timeout=TIMEOUT) as c:
-        return c.get(f"{BASE_URL}{path}", params=params, headers=_headers()).json()
+        return c.get(f"{BASE_URL}{path}", params=params, headers=_headers(app)).json()
 
 
-def _post(path: str, body: dict | None = None) -> Any:
+def _post(path: str, body: dict | None = None, app: str | None = None) -> Any:
     with httpx.Client(timeout=TIMEOUT) as c:
-        return c.post(f"{BASE_URL}{path}", json=body, headers=_headers()).json()
+        return c.post(f"{BASE_URL}{path}", json=body, headers=_headers(app)).json()
 
 
-def _delete(path: str, params: dict | None = None) -> Any:
+def _delete(path: str, params: dict | None = None, app: str | None = None) -> Any:
     with httpx.Client(timeout=TIMEOUT) as c:
-        return c.delete(f"{BASE_URL}{path}", params=params, headers=_headers()).json()
+        return c.delete(f"{BASE_URL}{path}", params=params, headers=_headers(app)).json()
 
 
 # ---- Session state ----
@@ -142,44 +144,52 @@ def simulate_delivery_webhook(message_id: str, status: str) -> dict:
 
 @mcp.tool()
 def simulate_incoming_message(channel: str, sender: str, text: str,
-                              extra: dict | None = None) -> dict:
+                              extra: dict | None = None, app: str | None = None) -> dict:
     """Simulate an external user sending an inbound message to the app.
-    channel: telegram (via /telegram/client/sendMessage) or whatsapp."""
+    channel: telegram (via /telegram/client/sendMessage) or whatsapp.
+    app: registered app name to target; overrides set_app for this call."""
     if channel == "telegram":
-        return _post("/telegram/client/sendMessage", {"chat_id": sender, "text": text, **(extra or {})})
+        return _post("/telegram/client/sendMessage", {"chat_id": sender, "text": text, **(extra or {})}, app=app)
     if channel == "whatsapp":
-        return _post("/whatsapp/simulate/incoming", {"from": sender, "text": text, **(extra or {})})
+        return _post("/whatsapp/simulate/incoming", {"from": sender, "text": text, **(extra or {})}, app=app)
     return {"error": f"channel not supported for inbound simulation: {channel}"}
 
 
 @mcp.tool()
-def simulate_stripe_event(event_type: str, overrides: dict | None = None) -> dict:
-    """Build and send a simulated Stripe event, signed (Stripe-Signature), to the registered webhook."""
-    return _post("/stripe/simulate_event", {"event_type": event_type, "overrides": overrides or {}})
+def simulate_stripe_event(event_type: str, overrides: dict | None = None, app: str | None = None) -> dict:
+    """Build and send a simulated Stripe event, signed (Stripe-Signature), to the registered webhook.
+    app: registered app name to target; overrides set_app for this call."""
+    return _post("/stripe/simulate_event", {"event_type": event_type, "overrides": overrides or {}}, app=app)
 
 
 # ---- Social auth webhooks (GitHub / Facebook / X) ----
 
 @mcp.tool()
-def simulate_github_event(event_type: str = "push", payload: dict | None = None) -> dict:
+def simulate_github_event(event_type: str = "push", payload: dict | None = None,
+                          app: str | None = None) -> dict:
     """Fire a GitHub webhook event (push, issues, pull_request) signed with
-    X-Hub-Signature-256 to the app's registered GitHub webhook."""
-    return _post("/github/simulate", {"event_type": event_type, "payload": payload or {}})
+    X-Hub-Signature-256 to the app's registered GitHub webhook.
+    app: registered app name to target; overrides set_app for this call."""
+    return _post("/github/simulate", {"event_type": event_type, "payload": payload or {}}, app=app)
 
 
 @mcp.tool()
-def simulate_facebook_event(event_type: str = "page", payload: dict | None = None) -> dict:
+def simulate_facebook_event(event_type: str = "page", payload: dict | None = None,
+                            app: str | None = None) -> dict:
     """Fire a Facebook Graph API webhook event signed with X-Hub-Signature-256
-    to the app's registered Facebook webhook."""
-    return _post("/facebook/simulate", {"event_type": event_type, "payload": payload or {}})
+    to the app's registered Facebook webhook.
+    app: registered app name to target; overrides set_app for this call."""
+    return _post("/facebook/simulate", {"event_type": event_type, "payload": payload or {}}, app=app)
 
 
 @mcp.tool()
-def simulate_x_event(event_type: str = "tweet_create_events", payload: list | None = None) -> dict:
+def simulate_x_event(event_type: str = "tweet_create_events", payload: list | None = None,
+                     app: str | None = None) -> dict:
     """Fire an X (Twitter) Account Activity webhook event signed with
     X-Twitter-Webhooks-Signature to the app's registered X webhook.
-    payload is a list of event objects, as the real API delivers."""
-    return _post("/x/simulate", {"event_type": event_type, "payload": payload or []})
+    payload is a list of event objects, as the real API delivers.
+    app: registered app name to target; overrides set_app for this call."""
+    return _post("/x/simulate", {"event_type": event_type, "payload": payload or []}, app=app)
 
 
 @mcp.tool()
