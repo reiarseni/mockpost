@@ -19,18 +19,47 @@ def _config() -> dict:
                  "note": "Register apps with their fake credentials in /api/apps; "
                          "MockPost identifies each app by those credentials (no extra headers)."},
         "mail": {"protocol": "SMTP", "host": "localhost", "port": settings.smtp_port,
-                 "auth": "none", "env": "SMTP_HOST=localhost", "env_port": f"SMTP_PORT={settings.smtp_port}"},
+                 "auth": "required" if settings.strict_auth else "any",
+                 "auth_mechanisms": ["PLAIN", "LOGIN"], "starttls": False,
+                 "username": settings.smtp_username or "<any>",
+                 "password": settings.smtp_password or "<any>",
+                 "env": "SMTP_HOST=localhost", "env_port": f"SMTP_PORT={settings.smtp_port}",
+                 "note": "AUTH is advertised without TLS and any credential is accepted, so "
+                         "clients that always log in (Flask-Mail, Nodemailer) need no changes."},
         "telegram": {"base_url": f"{base}/telegram", "env": "TELEGRAM_API_BASE_URL=<base_url>",
-                     "note": "Put the bot token in the URL: /telegram/bot<TOKEN>/..."},
-        "whatsapp": {"base_url": f"{base}/whatsapp/v1", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>"},
-        "webpush": {"endpoint": f"{base}/webpush/send", "subscribe": f"{base}/webpush/subscribe",
-                    "vapid_public_key": vapid_public_key_b64(), "vapid_contact": settings.vapid_contact},
+                     "methods": ["getMe", "sendMessage", "sendPhoto", "sendDocument",
+                                 "editMessageText", "deleteMessage", "sendChatAction",
+                                 "answerCallbackQuery", "getChat", "getUpdates",
+                                 "setWebhook", "deleteWebhook", "getWebhookInfo"],
+                     "note": "Put the bot token in the URL: /telegram/bot<TOKEN>/... . "
+                             "Every method answers on GET and POST and reads JSON, "
+                             "form-urlencoded, multipart or query parameters."},
+        "whatsapp": {"base_url": f"{base}/whatsapp/v21.0", "env": "WHATSAPP_GRAPH_BASE_URL=<base_url>",
+                     "note": "Any Graph version works in the path (/whatsapp/v{version}/{phone_id}/messages); "
+                             "webhook verification is the real GET with hub.mode/hub.verify_token/hub.challenge."},
+        "webpush": {"subscribe": f"{base}/webpush/subscribe",
+                    "push_endpoint_pattern": f"{base}/webpush/push/{{subscription_id}}",
+                    "expire": f"{base}/webpush/subscriptions/{{subscription_id}}/expire",
+                    "send": f"{base}/webpush/send",
+                    "vapid_public_key": vapid_public_key_b64(), "vapid_contact": settings.vapid_contact,
+                    "note": "POST /webpush/subscribe returns a browser-shaped PushSubscription; "
+                            "send the encrypted push to its endpoint exactly as pywebpush or "
+                            "web-push do, and MockPost verifies VAPID and decrypts the payload. "
+                            "/webpush/send is the JSON shortcut for callers that skip the crypto."},
         "sms": {"base_url": f"{base}/twilio/2010-04-01/Accounts/AC00000000000000000000000000000000",
-                "env": "TWILIO_BASE_URL=<base_url>", "note": "account_sid and auth_token accept any value"},
+                "env": "TWILIO_BASE_URL=<base_url>",
+                "note": "account_sid and auth_token accept any value (HTTP Basic). SIDs are SM+32 hex "
+                        "and StatusCallback is posted form-urlencoded to the URL of the request."},
         "fcm": {"endpoint": f"{base}/fcm/v1/projects/{{project_id}}/messages:send",
-                "env": "FCM_ENDPOINT=<endpoint>", "note": "Bearer token not validated (shape only)"},
+                "simulate_unregister": f"{base}/fcm/simulate/unregister",
+                "env": "FCM_ENDPOINT=<endpoint>",
+                "note": "Requires an OAuth bearer (any value), enforces the token/topic/condition "
+                        "exclusivity and honours validate_only as a dry run."},
         "apns": {"endpoint": f"{base}/apns/3/device/{{device_token}}",
-                 "env": "APNS_ENDPOINT=<endpoint>"},
+                 "simulate_unregister": f"{base}/apns/simulate/unregister",
+                 "env": "APNS_ENDPOINT=<endpoint>",
+                 "note": "Answers 200 with an empty body and the apns-id header; failures use "
+                         "{'reason': ...} with the real status (410 Unregistered, 413 PayloadTooLarge)."},
         "slack": {"webhook_pattern": f"{base}/slack/webhook/{{webhook_id}}",
                   "env": "SLACK_WEBHOOK_URL=<url with your webhook_id>"},
         "discord": {"webhook_pattern": f"{base}/discord/webhook/{{webhook_id}}",

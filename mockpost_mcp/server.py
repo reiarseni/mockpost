@@ -200,6 +200,43 @@ def verify_facebook_webhook() -> str:
             f"&hub.verify_token=<verify_token>&hub.challenge=<challenge>")
 
 
+# ---- Web Push / native push ----
+
+@mcp.tool()
+def create_push_subscription() -> dict:
+    """Create a Web Push subscription and return it shaped exactly like the
+    browser's PushSubscription (endpoint + keys.p256dh + keys.auth). Hand it to
+    the app under test: MockPost keeps the private key, so when the backend
+    sends the encrypted push with pywebpush or web-push it verifies the VAPID
+    signature, decrypts the payload and captures the cleartext."""
+    return _post("/webpush/subscribe", {})
+
+
+@mcp.tool()
+def list_push_subscriptions() -> list[dict]:
+    """List Web Push subscriptions with their endpoint and status (active|gone)."""
+    return _get("/webpush/subscriptions")
+
+
+@mcp.tool()
+def expire_push_subscription(subscription_id: str) -> dict:
+    """Mark a Web Push subscription as gone: the next push answers 410, which
+    is how a backend learns it must delete a dead subscription."""
+    return _post(f"/webpush/subscriptions/{subscription_id}/expire", {})
+
+
+@mcp.tool()
+def simulate_push_token_unregistered(channel: str, token: str) -> dict:
+    """Make a native push token look uninstalled: FCM answers 404 UNREGISTERED
+    and APNs answers 410 Unregistered on the next send.
+    channel: fcm | apns"""
+    if channel == "fcm":
+        return _post("/fcm/simulate/unregister", {"token": token})
+    if channel == "apns":
+        return _post("/apns/simulate/unregister", {"device_token": token})
+    return {"error": f"channel not supported for token simulation: {channel}"}
+
+
 # ---- OTP ----
 
 @mcp.tool()

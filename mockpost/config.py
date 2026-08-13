@@ -21,6 +21,13 @@ def _random_secret(prefix: str = "") -> str:
     return prefix + secrets.token_hex(16)
 
 
+def _flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 def _generate_vapid_keys() -> dict:
     from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives import serialization
@@ -49,6 +56,14 @@ class Settings:
     mockpost_url: str = "http://localhost:8090"
     # App -> SMTP port map, format "app-a:1025,app-b:1026"
     smtp_apps: dict = field(default_factory=dict)
+
+    # Authentication is permissive by default: every channel takes the
+    # credentials it is given, so no client needs changes. With
+    # MOCKPOST_STRICT_AUTH each channel enforces its real authentication and
+    # answers what the live API would (401/403/535) when it is missing.
+    strict_auth: bool = False
+    smtp_username: str = ""
+    smtp_password: str = ""
 
     stripe_webhook_secret: str = field(default_factory=lambda: _random_secret("whsec_"))
     vapid_contact: str = "mailto:mockpost@test.local"
@@ -79,6 +94,9 @@ class Settings:
         self.stripe_webhook_secret = os.environ.get("MOCKPOST_STRIPE_WEBHOOK_SECRET", self.stripe_webhook_secret)
         self.vapid_contact = os.environ.get("MOCKPOST_VAPID_CONTACT", self.vapid_contact)
         self.oauth_jwt_key = os.environ.get("MOCKPOST_OAUTH_JWT_KEY", self.oauth_jwt_key)
+        self.strict_auth = _flag("MOCKPOST_STRICT_AUTH", self.strict_auth)
+        self.smtp_username = os.environ.get("MOCKPOST_SMTP_USERNAME", self.smtp_username)
+        self.smtp_password = os.environ.get("MOCKPOST_SMTP_PASSWORD", self.smtp_password)
         apps = os.environ.get("MOCKPOST_APPS", "")
         for item in apps.split(","):
             if ":" in item:

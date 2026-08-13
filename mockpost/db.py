@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS messages (
     status        TEXT NOT NULL DEFAULT 'received',
     created_at    TEXT NOT NULL,
     delivered_at  TEXT,
-    read_at       TEXT
+    read_at       TEXT,
+    meta          TEXT                     -- JSON: per-channel extras (HTML body, attachments, headers)
 );
 CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel);
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
@@ -65,8 +66,20 @@ CREATE TABLE IF NOT EXISTS webpush_subscriptions (
     endpoint          TEXT NOT NULL,
     p256dh            TEXT NOT NULL,
     auth              TEXT NOT NULL,
+    private_key       TEXT,                -- kept only for keys MockPost generated, to decrypt
     vapid_public_key  TEXT,
+    status            TEXT NOT NULL DEFAULT 'active',   -- active | gone (410 on push)
+    test_id           TEXT,
+    app_id            TEXT,
     created_at        TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS device_tokens (
+    channel       TEXT NOT NULL,           -- fcm | apns
+    token         TEXT NOT NULL,
+    state         TEXT NOT NULL,           -- active | unregistered
+    updated_at    TEXT NOT NULL,
+    PRIMARY KEY (channel, token)
 );
 
 CREATE TABLE IF NOT EXISTS otp_codes (
@@ -143,9 +156,12 @@ async def init_db() -> None:
 async def _migrate(conn: aiosqlite.Connection) -> None:
     """Migraciones de esquemas antiguos (DB creadas antes de estas columnas)."""
     cur = await conn.execute("PRAGMA table_info(messages)")
-    if "app_id" not in {r[1] for r in await cur.fetchall()}:
+    msg_cols = {r[1] for r in await cur.fetchall()}
+    if "app_id" not in msg_cols:
         await conn.execute("ALTER TABLE messages ADD COLUMN app_id TEXT")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_app ON messages(app_id)")
+    if "meta" not in msg_cols:
+        await conn.execute("ALTER TABLE messages ADD COLUMN meta TEXT")
     cur = await conn.execute("PRAGMA table_info(webhooks_registry)")
     if "app_id" not in {r[1] for r in await cur.fetchall()}:
         await conn.execute("ALTER TABLE webhooks_registry ADD COLUMN app_id TEXT")
@@ -157,6 +173,12 @@ async def _migrate(conn: aiosqlite.Connection) -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_webhook_events_app ON webhook_events(app_id)")
     if "response_body" not in we_cols:
         await conn.execute("ALTER TABLE webhook_events ADD COLUMN response_body TEXT")
+    cur = await conn.execute("PRAGMA table_info(webpush_subscriptions)")
+    sub_cols = {r[1] for r in await cur.fetchall()}
+    for column, ddl in (("private_key", "TEXT"), ("status", "TEXT NOT NULL DEFAULT 'active'"),
+                        ("test_id", "TEXT"), ("app_id", "TEXT")):
+        if column not in sub_cols:
+            await conn.execute(f"ALTER TABLE webpush_subscriptions ADD COLUMN {column} {ddl}")
 
 
 async def close_db() -> None:

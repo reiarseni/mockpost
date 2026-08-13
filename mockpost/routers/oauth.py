@@ -39,12 +39,26 @@ def _jwt(payload: dict) -> str:
     return jwt.encode(payload, settings.oauth_jwt_key, algorithm="HS256")
 
 
+def oauth_error(error: str, description: str, status: int = 400) -> JSONResponse:
+    """RFC 6749 error object, the shape every OAuth client parses."""
+    return JSONResponse({"error": error, "error_description": description}, status_code=status)
+
+
 @router.get("/{provider}/authorize")
 async def authorize(provider: str, request: Request):
     client_id = request.query_params.get("client_id", "")
     redirect_uri = request.query_params.get("redirect_uri", "")
     scope = request.query_params.get("scope", "")
     state = request.query_params.get("state", "")
+    # RFC 6749 4.1.2.1: with no usable redirect_uri the error must be shown to
+    # the user, never redirected; with one, the error travels in the redirect.
+    if not redirect_uri:
+        return oauth_error("invalid_request", "Missing required parameter: redirect_uri")
+    if not client_id:
+        sep = "&" if "?" in redirect_uri else "?"
+        return RedirectResponse(
+            f"{redirect_uri}{sep}error=invalid_request"
+            f"&error_description=Missing+required+parameter%3A+client_id&state={state}")
     code = uuid.uuid4().hex[:24]
     db = get_db()
     session_id = str(uuid.uuid4())
@@ -59,16 +73,40 @@ async def authorize(provider: str, request: Request):
     return RedirectResponse(f"{redirect_uri}{sep}code={code}&state={state}")
 
 
+async def _token_params(request: Request) -> dict:
+    """Token requests are form-encoded per RFC 6749, but several SDKs post
+    JSON; both are read here."""
+    content_type = (request.headers.get("Content-Type") or "").split(";")[0].strip()
+    if content_type == "application/json":
+        try:
+            data = await request.json()
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return dict(await request.form())
+
+
 @router.post("/{provider}/token")
 async def token(provider: str, request: Request):
-    form = await request.form()
-    code = form.get("code", "")
+    params = await _token_params(request)
+    grant_type = params.get("grant_type", "authorization_code")
     db = get_db()
-    cur = await db.execute("SELECT * FROM oauth_sessions WHERE provider=? AND code=? ORDER BY created_at DESC LIMIT 1",
-                           (provider, code))
+
+    if grant_type == "refresh_token":
+        cur = await db.execute(
+            "SELECT * FROM oauth_sessions WHERE provider=? AND refresh_token=? "
+            "ORDER BY created_at DESC LIMIT 1", (provider, params.get("refresh_token", "")))
+    elif grant_type == "authorization_code":
+        cur = await db.execute(
+            "SELECT * FROM oauth_sessions WHERE provider=? AND code=? "
+            "ORDER BY created_at DESC LIMIT 1", (provider, params.get("code", "")))
+    else:
+        return oauth_error("unsupported_grant_type", f"Unsupported grant_type: {grant_type}")
+
     row = await cur.fetchone()
     if not row:
-        return JSONResponse({"error": "invalid_grant"}, status_code=400)
+        return oauth_error("invalid_grant", "The provided authorization grant is invalid")
+
     profile = json.loads(row["fake_user_profile"])
     sub = profile.get("sub") or profile.get("id")
     access_token = _jwt({"sub": str(sub), "provider": provider})
@@ -76,8 +114,17 @@ async def token(provider: str, request: Request):
     await db.execute("UPDATE oauth_sessions SET access_token=?, refresh_token=? WHERE id=?",
                      (access_token, refresh_token, row["id"]))
     await db.commit()
-    return {"access_token": access_token, "token_type": "Bearer", "expires_in": settings.oauth_token_ttl_minutes * 60,
-            "refresh_token": refresh_token, "scope": row["scope"] or ""}
+    response = {"access_token": access_token, "token_type": "Bearer",
+                "expires_in": settings.oauth_token_ttl_minutes * 60,
+                "refresh_token": refresh_token, "scope": row["scope"] or ""}
+    # OpenID Connect: an openid scope must come back with an id_token.
+    if "openid" in (row["scope"] or ""):
+        response["id_token"] = _jwt({
+            "iss": settings.mockpost_url, "aud": row["client_id"], "sub": str(sub),
+            "email": profile.get("email"), "email_verified": profile.get("email_verified", True),
+            "name": profile.get("name"), "picture": profile.get("picture"),
+        })
+    return response
 
 
 async def _profile_for(provider: str, access_token: str) -> dict:
@@ -116,13 +163,29 @@ async def _check_bearer(request: Request) -> str | None:
     return token
 
 
+def unauthorized(provider: str) -> JSONResponse:
+    """Each provider words its 401 differently and SDKs match on that text."""
+    if provider == "google":
+        return JSONResponse({"error": {"code": 401, "message": "Invalid Credentials",
+                                       "status": "UNAUTHENTICATED"}}, status_code=401)
+    if provider == "github":
+        return JSONResponse({"message": "Bad credentials",
+                             "documentation_url": "https://docs.github.com/rest"},
+                            status_code=401)
+    if provider == "facebook":
+        return JSONResponse({"error": {"message": "Invalid OAuth access token",
+                                       "type": "OAuthException", "code": 190}}, status_code=401)
+    return JSONResponse({"title": "Unauthorized", "status": 401,
+                         "detail": "Unauthorized"}, status_code=401)
+
+
 @router.get("/{provider}/userinfo")
 @router.get("/{provider}/user")
 @router.get("/{provider}/me")
 async def userinfo(provider: str, request: Request):
     access_token = await _check_bearer(request)
     if not access_token:
-        return JSONResponse({"error": "invalid_token"}, status_code=401)
+        return unauthorized(provider)
     return await _profile_for(provider, access_token)
 
 
@@ -130,5 +193,5 @@ async def userinfo(provider: str, request: Request):
 async def x_users_me(request: Request):
     access_token = await _check_bearer(request)
     if not access_token:
-        return JSONResponse({"error": "invalid_token"}, status_code=401)
+        return unauthorized("x")
     return await _profile_for("x", access_token)

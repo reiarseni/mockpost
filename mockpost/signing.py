@@ -73,22 +73,49 @@ def x_crc_response(crc_token: str, consumer_secret: str) -> str:
     return base64.b64encode(digest).decode()
 
 
-def verify_vapid(authorization: str | None, audience: str) -> bool:
-    """Validate a real `Authorization: vapid t=...;k=...` header (py_vapid).
+def vapid_claims(authorization: str | None) -> dict | None:
+    """Claims of a VAPID header, in either scheme, without validating them.
 
-    py_vapid.verify() checks the ES256 signature against the `k=` key from the
-    header; here we additionally decode the claims and require aud/exp to be
-    correct."""
-    if not authorization or not authorization.lower().startswith("vapid "):
-        return False
+    - RFC 8292 / draft-02: `Authorization: vapid t=<jwt>,k=<public key>`
+    - draft-01: `Authorization: WebPush <jwt>`, key in the Crypto-Key header.
+      Older clients (pywebpush with version="aesgcm", web-push < 3.3) still
+      send this one, so a push service has to read both."""
+    if not authorization:
+        return None
+    scheme, _, rest = authorization.partition(" ")
     try:
-        from py_vapid import Vapid02
-        if not Vapid02.verify(authorization):
-            return False
-        token = authorization.split("t=", 1)[1].split(",", 1)[0]
+        if scheme.lower() == "vapid":
+            token = rest.split("t=", 1)[1].split(",", 1)[0]
+        elif scheme.lower() == "webpush":
+            token = rest.strip()
+        else:
+            return None
         payload_b64 = token.split(".", 2)[1]
         payload_b64 += "=" * (-len(payload_b64) % 4)
-        claims = json.loads(base64.urlsafe_b64decode(payload_b64))
+        return json.loads(base64.urlsafe_b64decode(payload_b64))
+    except Exception:
+        return None
+
+
+def verify_vapid(authorization: str | None, audience: str) -> bool:
+    """Validate a real VAPID header (py_vapid) and its aud/exp claims.
+
+    py_vapid.verify() checks the ES256 signature against the `k=` key of the
+    header; the draft-01 `WebPush <jwt>` scheme carries its key in Crypto-Key,
+    so for that one only the claims are checked."""
+    if not authorization:
+        return False
+    scheme = authorization.split(" ", 1)[0].lower()
+    if scheme not in ("vapid", "webpush"):
+        return False
+    try:
+        if scheme == "vapid":
+            from py_vapid import Vapid02
+            if not Vapid02.verify(authorization):
+                return False
+        claims = vapid_claims(authorization)
+        if not claims:
+            return False
         if claims.get("aud") != audience:
             return False
         if claims.get("exp", 0) < time.time():

@@ -29,14 +29,17 @@ async def insert_message(
     status: str = "received",
     test_id: str | None = None,
     app_id: str | None = None,
+    meta: dict | None = None,
 ) -> str:
     db = get_db()
     msg_id = str(uuid.uuid4())
     raw = raw_payload if isinstance(raw_payload, str) else json.dumps(raw_payload, ensure_ascii=False)
     await db.execute(
-        "INSERT INTO messages (id, test_id, app_id, channel, direction, sender, recipient, subject, body, raw_payload, status, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (msg_id, test_id, app_id, channel, direction, sender, recipient, subject, body, raw, status, utcnow()),
+        "INSERT INTO messages (id, test_id, app_id, channel, direction, sender, recipient, subject, body, "
+        "raw_payload, status, created_at, meta) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (msg_id, test_id, app_id, channel, direction, sender, recipient, subject, body, raw, status, utcnow(),
+         json.dumps(meta, ensure_ascii=False) if meta else None),
     )
     await db.commit()
     await maybe_store_otp(channel, body, recipient or sender, test_id, app_id)
@@ -45,18 +48,41 @@ async def insert_message(
 
 async def maybe_store_otp(channel: str, body: str, identifier: str | None, test_id: str | None,
                           app_id: str | None = None) -> None:
-    """Detect a 4-8 digit OTP code in the body and store it in otp_codes."""
+    """Detect a 4-8 digit OTP code in the body and store it in otp_codes.
+
+    A mail can carry several recipients (comma-separated): one row per
+    identifier, so get_latest_otp works for any of them."""
     if channel not in ("sms", "mail") or not identifier:
         return
     m = OTP_RE.search(body or "")
     if not m:
         return
     db = get_db()
+    for single in [i.strip() for i in identifier.split(",") if i.strip()]:
+        await db.execute(
+            "INSERT INTO otp_codes (id, test_id, channel, identifier, code, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), test_id, channel, single, m.group(1), utcnow()),
+        )
+    await db.commit()
+
+
+async def set_device_state(channel: str, token: str, state: str) -> None:
+    """Mark a native push token as active or unregistered (FCM 404 / APNs 410)."""
+    db = get_db()
     await db.execute(
-        "INSERT INTO otp_codes (id, test_id, channel, identifier, code, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (str(uuid.uuid4()), test_id, channel, identifier, m.group(1), utcnow()),
+        "INSERT INTO device_tokens (channel, token, state, updated_at) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(channel, token) DO UPDATE SET state=excluded.state, updated_at=excluded.updated_at",
+        (channel, token, state, utcnow()),
     )
     await db.commit()
+
+
+async def get_device_state(channel: str, token: str) -> str:
+    db = get_db()
+    cur = await db.execute("SELECT state FROM device_tokens WHERE channel=? AND token=?",
+                           (channel, token))
+    row = await cur.fetchone()
+    return row["state"] if row else "active"
 
 
 async def update_message_status(msg_id: str, status: str) -> None:
