@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-14
+
 ### Fixed
 - The inbound telegram simulation delivers a complete `Update` (`update_id`,
   `message_id`, `date`, `from` and a typed `chat`), so clients that parse it
