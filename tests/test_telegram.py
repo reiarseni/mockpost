@@ -111,3 +111,23 @@ def test_get_updates_returns_simulated_inbound_messages(client):
     updates = client.post(f"/telegram/bot{TOKEN}/getUpdates").json()["result"]
     assert updates[0]["message"]["text"] == "from a user"
     assert updates[0]["message"]["chat"]["id"] == 555
+
+
+def test_inbound_simulation_delivers_a_complete_update(client):
+    """The delivered body must be a full Update: clients deserialize it with
+    Update.de_json, which needs update_id, message_id, date, chat and from."""
+    client.post("/api/apps", json={"name": "bot-app", "creds": {"bot_token": TOKEN}})
+    client.post("/api/webhooks", json={"channel": "telegram", "app": "bot-app",
+                                       "target_url": "http://127.0.0.1:9/tg"})
+    client.post("/telegram/client/sendMessage",
+                headers={"X-MockPost-App": "bot-app"},
+                json={"chat_id": 778899, "text": "/start ABC12345", "from_user": "tester"})
+
+    delivery = client.get("/api/webhooks/deliveries", params={"channel": "telegram"}).json()[0]
+    update = json.loads(delivery["payload"])
+    assert update["update_id"] >= 1
+    message = update["message"]
+    assert message["message_id"] and message["date"]
+    assert message["chat"] == {"id": 778899, "type": "private"}
+    assert message["from"]["username"] == "tester"
+    assert message["text"] == "/start ABC12345"
