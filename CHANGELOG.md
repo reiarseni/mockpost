@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The inbound telegram simulation delivers a complete `Update` (`update_id`,
+  `message_id`, `date`, `from` and a typed `chat`), so clients that parse it
+  with `Update.de_json` no longer fail on the webhook they just received.
+
 ## [0.2.0] - 2026-08-13
 
 ### Added

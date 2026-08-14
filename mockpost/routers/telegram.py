@@ -38,6 +38,7 @@ router = APIRouter(prefix="/telegram", tags=["telegram"])
 TOKEN_RE = re.compile(r"^\d+:[A-Za-z0-9_-]{35}$")
 
 _message_ids = count(1000)
+_update_ids = count(1)
 
 
 class ClientMessage(BaseModel):
@@ -68,6 +69,29 @@ def chat_of(chat_id: Any) -> dict:
     except (TypeError, ValueError):
         return {"id": chat_id, "type": "private"}
     return {"id": numeric, "type": "supergroup" if numeric < 0 else "private"}
+
+
+def inbound_update(chat_id: int | str, text: str, from_user: str | None,
+                   message_id_seed: str) -> dict:
+    """A complete Update, the shape every Bot API client deserializes.
+
+    Clients do not read the raw dict: python-telegram-bot calls
+    `Update.de_json`, which needs `update_id` and, inside `message`,
+    `message_id`, `date`, `chat` and `from`. Delivering a partial body made
+    those clients raise on the webhook they had just received."""
+    numeric_seed = abs(hash(message_id_seed)) % 1_000_000
+    return {
+        "update_id": next(_update_ids),
+        "message": {
+            "message_id": numeric_seed,
+            "date": int(time.time()),
+            "chat": chat_of(chat_id),
+            "from": {"id": numeric_seed, "is_bot": False,
+                     "first_name": from_user or "Simulated",
+                     "username": from_user or "simulated"},
+            "text": text,
+        },
+    }
 
 
 def message_object(token: str, chat_id: Any, **content) -> dict:
@@ -287,7 +311,8 @@ async def client_send_message(payload: ClientMessage, request: Request):
         raw_payload=payload.model_dump(), status="received", test_id=test_id, app_id=app_id,
     )
     results = await deliver_to_app_webhooks(
-        "telegram", "message", {"message": {"chat": {"id": payload.chat_id}, "text": payload.text}},
+        "telegram", "message",
+        inbound_update(payload.chat_id, payload.text, payload.from_user, msg_id),
         test_id=test_id, app_id=app_id,
     )
     return {"ok": True, "message_id": msg_id, "app_id": app_id, "webhooks_delivered": results}
